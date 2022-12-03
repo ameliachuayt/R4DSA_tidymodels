@@ -2,6 +2,7 @@
 title: "Hands-on Ex1 - TidyModels"
 author: "Amelia Chua"
 editor: visual
+date: '3 December 2022'
 ---
 
 # Overview
@@ -130,7 +131,8 @@ obs_diff_means
 The output shows that the difference in mean is 1.40.
 
 ```{r}
-visualise(null_distribution_maths) +
+visualise(null_distribution_maths,
+          bins = 10) +
   shade_p_value(obs_stat = obs_diff_means,
                 direction = 'both')
 ```
@@ -142,3 +144,7 @@ null_distribution_maths %>%
 ```
 
 Based on the simulation, the p-value is within the sampled data? We do not have sufficient statistical evidence to reject the null hypothesis (observed difference is not statistical significant).
+
+# Conclusion
+
+In this exercise, we used a simple data set to illustrate how we may use **infer** package for statistical inference testing.
