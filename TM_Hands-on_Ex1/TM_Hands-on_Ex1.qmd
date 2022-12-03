@@ -4,6 +4,24 @@ author: "Amelia Chua"
 editor: visual
 ---
 
+# Overview
+
+In this hands-on exercise, we will explore the **infer** package to perform statistical inference testing.
+
+*From the [site](https://infer.netlify.app/index.html):*
+
+The package is centered around 4 main verbs, supplemented with many utilities to visualize and extract value from their outputs.
+
+-    [`specify()`](https://infer.netlify.app/reference/specify.html) allows you to specify the variable, or relationship between variables, that you\'re interested in.
+
+-    [`hypothesize()`](https://infer.netlify.app/reference/hypothesize.html) allows you to declare the null hypothesis.
+
+-    [`generate()`](https://infer.netlify.app/reference/generate.html) allows you to generate data reflecting the null hypothesis.
+
+-    [`calculate()`](https://infer.netlify.app/reference/calculate.html) allows you to calculate a distribution of statistics from the generated data to form the null distribution.
+
+![](https://raw.githubusercontent.com/tidymodels/infer/master/figs/ht-diagram.png)
+
 # Getting Started
 
 ## Installing and loading packages
@@ -18,7 +36,7 @@ pacman::p_load(tidyverse, tidymodels)
 exam <- read_csv("data\\Exam_data.csv")
 ```
 
-## Exploratory Data Analysis
+# Exploratory Data Analysis
 
 ```{r}
 ggplot(data = exam,
@@ -30,9 +48,97 @@ ggplot(data = exam,
 ## Summary Statistics
 
 ```{r}
-summary(exam)
+exam %>%
+  group_by(GENDER) %>%
+  summarize(n = n(), 
+            mean_score = mean(MATHS),
+            std_dev = sd(MATHS))
+```
+
+We can see that the average scores for females are higher than males. On the other hand, female's standard deviation is lower than males. Let's investigate further - in the next section, we will seek to find out if the average scores of females are higher than males using approporiate statistical methods.
+
+# Specify Variables
+
+In the code chunk below, [specify()](https://infer.netlify.app/reference/specify.html#:~:text=specify()%20is%20used%20to,are%20converted%20to%20factor%20s.)from **infer** package allows us to specify the variables that we will need for the statistical test. Do note that the base file exam needs to be in a tibble data frame. The formula must be specified such that the response variable (qualitative data) is on the left and explanatory (categorical data) on the right.
+
+```{r}
+exam %>%
+  specify(formula = MATHS~GENDER)
+
+```
+
+# Hypothesis
+
+In the code chunk below, we will be using [*hypothesise()*](https://infer.netlify.app/reference/hypothesize.html)from the **infer** package. We will test for independent test.
+
+```{r}
+exam %>%
+  specify(formula = MATHS ~ GENDER) %>%
+  hypothesise(null = "independence")
+```
+
+In the output above, we can see that the null hypothesis is defined as 'independence'.
+
+# Generate Replicates
+
+We ar using the [*generate()*](https://infer.netlify.app/reference/generate.html) from **infer** package
+
+Note that in *reps* parameter, when we indicate reps = 1,000, it means that each value is replicated 1,000 times following a randomised. This is not to be confused with oversampling which is used when there is a mismatch number of data points between two variables.
+
+In our case, we do not have this issue. However, what we want to ensure is that there is sufficient records for us to do our analysis. Since we specified "permit", it will, for each replicate, the input value will be randomly reassigned (without replacement) to a new output value in the sample.
+
+This step is helpful when our dataset is small or we have doubts about how representative of the population it is.
+
+```{r}
+set.seed(1234)
+exam %>%
+  specify(formula = MATHS ~ GENDER ) %>%
+  hypothesise(null = "independence") %>%
+  generate(reps = 1000, type = "permute") %>%
+
+  View()
+```
+
+# Calculate Summary Statistics
+
+We will use [*calculate()*](https://infer.netlify.app/reference/calculate.html)from **infer** package to calculate summary statistics. The stat= parameter allows us to specify the statistics we need. These are valid inputs: "mean", "median", "sum", "sd", "prop", "count", "diff in means", "diff in medians", "diff in props", "Chisq", "F", "slope", "correlation", "t", "z", "ratio of props", "odds ratio"
+
+We will compute the summary statistics of our 1,000 permutations.
+
+```{r}
+set.seed(1234)
+null_distribution_maths <- exam %>%
+  specify(formula = MATHS ~ GENDER ) %>%
+  hypothesise(null = "independence") %>%
+  generate(reps = 1000, type = "permute") %>%
+  calculate(stat = "diff in means",
+            order = c("Female","Male")) 
+
+null_distribution_maths
 ```
 
 ```{r}
-str(exam)
+#based on observed / actual values
+obs_diff_means <- exam %>%
+  specify(formula = MATHS ~ GENDER ) %>%
+  calculate(stat = "diff in means",
+            order = c("Female","Male")) 
+
+obs_diff_means
 ```
+
+The output shows that the difference in mean is 1.40.
+
+```{r}
+visualise(null_distribution_maths) +
+  shade_p_value(obs_stat = obs_diff_means,
+                direction = 'both')
+```
+
+```{r}
+null_distribution_maths %>%
+  get_p_value(obs_stat = obs_diff_means,
+              direction = 'both')
+```
+
+Based on the simulation, the p-value is within the sampled data? We do not have sufficient statistical evidence to reject the null hypothesis (observed difference is not statistical significant).

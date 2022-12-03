@@ -8,6 +8,8 @@ website:
       - href: index.qmd
         text: Home
       - about.qmd
+      - text: Hands-on Exercise 1
+        href: TM_Hands-on_Ex1\\TM_Hands-on_Ex1.qmd
 
 format:
   html:
